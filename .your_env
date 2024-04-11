@@ -5,3 +5,4 @@ POSTGRES_DB=your_postgres_database_name
 POSTGRES_HOST=your_postgres_host
 POSTGRES_PORT=your_postgres_port
 PAYMENT_TOKEN=your_telegram_bot_payment_token
+ERRORS_CHAT_ID=chat_id_where_bot_will_send_errors
