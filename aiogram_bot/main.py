@@ -24,7 +24,7 @@ dp.include_router(faq_fsm_router)
 
 
 async def main():
-    logging.basicConfig(level=logging.INFO)  # Настройка уровня логирования на INFO
+    logging.basicConfig(filename='/app/logs/bot.log', level=logging.INFO)  # Настройка уровня логирования на INFO
 
     try:
         await bot.set_my_commands([BotCommand(command='start', description='(пере)запустить бота')],
