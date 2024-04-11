@@ -69,7 +69,6 @@ async def contact_is_entered(message: Message, state: FSMContext):
     address = data['address']
     await message.bot.edit_message_text(chat_id=message.chat.id, message_id=message_id,
                                         text=f'Произведите пожалуйста оплату за товары снизу⬇️')
-    await message.answer(text='payment_token: '+payment_token)
     sent_invoice = await message.bot.send_invoice(
         chat_id=message.chat.id,
         title='Доставка товаров в корзине',
