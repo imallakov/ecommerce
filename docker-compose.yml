@@ -6,6 +6,7 @@ services:
     volumes:
       - ./photos:/app/photos
       - ./.env:/app/.env
+      - ./logs:/app/logs
     ports:
       - "8000:8000"
     depends_on:
