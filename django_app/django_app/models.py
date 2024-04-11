@@ -49,7 +49,7 @@ class Chat(models.Model):
 
 
 class User(models.Model):
-    id = models.IntegerField(unique=True, primary_key=True)
+    id = models.BigIntegerField(unique=True, primary_key=True)
     username = models.CharField(max_length=32)
 
     def __str__(self):
