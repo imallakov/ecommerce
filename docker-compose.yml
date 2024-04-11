@@ -16,6 +16,7 @@ services:
     volumes:
       - ./photos:/app/photos
       - ./.env:/app/.env
+      - ./logs:/app/logs
     depends_on:
       - db
 
