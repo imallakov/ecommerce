@@ -1,0 +1,7 @@
+BOT_TOKEN=your_bot_token
+POSTGRES_USER=your_postgres_user
+POSTGRES_PASSWORD=your_postgres_password
+POSTGRES_DB=your_postgres_database_name
+POSTGRES_HOST=your_postgres_host
+POSTGRES_PORT=your_postgres_port
+PAYMENT_TOKEN=your_telegram_bot_payment_token
