@@ -1,8 +1,9 @@
 from types import NoneType
+
 from sqlalchemy import select, exc
 from sqlalchemy.orm import selectinload
+from bot import bot_send_error_message
 
-# from bot import bot_send_message, bot_send_error_message
 from .models import User, Chat, async_session, Product, Category, Subcategory, CartItem, QuestionAnswer
 
 
@@ -16,8 +17,8 @@ async def is_user_exists(user_id: int) -> bool:
             else:
                 return False
     except exc.SQLAlchemyError as error:
-        # await bot_send_error_message(
-        #     f'is_user_exists:\nuser_id={user_id}\nError: {error.__str__()}')
+        await bot_send_error_message(
+            f'is_user_exists:\nuser_id={user_id}\nError: {error.__str__()}')
         return False
 
 
@@ -42,8 +43,8 @@ async def create_user(user_id: int, username: str | None) -> User | None:
                 await session.commit()
                 return await get_user(user_id)
     except exc.SQLAlchemyError as error:
-        # await bot_send_error_message(
-        #     f'create_user:\nuser_id={user_id}\nusername={username}\nError: {error.__str__()}')
+        await bot_send_error_message(
+            f'create_user:\nuser_id={user_id}\nusername={username}\nError: {error.__str__()}')
         return None
 
 
@@ -57,8 +58,8 @@ async def get_user(user_id: int) -> User | None:
             )
             return result.scalars().first()
     except exc.SQLAlchemyError as error:
-        # await bot_send_error_message(
-        #     f'get_user:\nuser_id={user_id}\nError: {error.__str__()}')
+        await bot_send_error_message(
+            f'get_user:\nuser_id={user_id}\nError: {error.__str__()}')
         return None
 
 
@@ -78,8 +79,8 @@ async def add_product_to_cart(user_id: int, product_id: int, quantity: int) -> b
             await session.commit()
         return True
     except exc.SQLAlchemyError as error:
-        # await bot_send_error_message(
-        #     f'create_user:\nuser_id={user_id}\nusername={username}\nError: {error.__str__()}')
+        await bot_send_error_message(
+            f'add_product_to_cart:\nuser_id={user_id}\nproduct_id={product_id}\nError: {error.__str__()}')
         return False
 
 
@@ -89,9 +90,8 @@ async def get_all_subscription_chats() -> list[Chat]:
             chats = await session.execute(select(Chat))
             return chats.scalars().all()
     except exc.SQLAlchemyError as error:
-        # await bot_send_error_message(
-        #     f'get_all_chats:\nError: {error.__str__()}')
-        print('error', error)
+        await bot_send_error_message(
+            f'get_all_subscription_chats:\nError: {error.__str__()}')
         return []
 
 
@@ -101,9 +101,8 @@ async def get_all_categories() -> list[Category]:
             caregories = await session.execute(select(Category).order_by(Category.id))
             return caregories.scalars().all()
     except exc.SQLAlchemyError as error:
-        print('error', error)
-        # await bot_send_error_message(
-        #     f'get_all_chats:\nError: {error.__str__()}')
+        await bot_send_error_message(
+            f'get_all_categories:\nError: {error.__str__()}')
         return []
 
 
@@ -114,9 +113,8 @@ async def get_subcategories_of_category(category_id) -> list[Subcategory]:
                 select(Subcategory).where(Subcategory.category_id == category_id).order_by(Subcategory.id))
             return subcaregories.scalars().all()
     except exc.SQLAlchemyError as error:
-        print('error', error)
-        # await bot_send_error_message(
-        #     f'get_all_chats:\nError: {error.__str__()}')
+        await bot_send_error_message(
+            f'get_subcategories_of_category:\ncategory_id={category_id}\nError: {error.__str__()}')
         return []
 
 
@@ -131,9 +129,8 @@ async def get_products_of_subcategory(subcategory_id) -> list[Product]:
             )
             return products.scalars().all()
     except exc.SQLAlchemyError as error:
-        print('error', error)
-        # await bot_send_error_message(
-        #     f'get_all_chats:\nError: {error.__str__()}')
+        await bot_send_error_message(
+            f'get_products_of_subcategory:\nsubcategory_id={subcategory_id}\nError: {error.__str__()}')
         return []
 
 
@@ -146,7 +143,8 @@ async def get_product_by_id(product_id) -> Product | None:
             )
             return product.scalars().first()
     except exc.SQLAlchemyError as error:
-        print('error', error)
+        await bot_send_error_message(
+            f'get_product_by_id:\nproduct_id={product_id}\nError: {error.__str__()}')
         return None
 
 
@@ -160,7 +158,8 @@ async def get_all_cartitems_of_user(user_id) -> list[CartItem]:
             )
             return cartitems.scalars().all()
     except exc.SQLAlchemyError as error:
-        print('error', error)
+        await bot_send_error_message(
+            f'get_all_cartitems_of_user:\nuser_id={user_id}\nError: {error.__str__()}')
         return []
 
 
@@ -177,7 +176,8 @@ async def clear_all_cartitems_of_user(user_id):
                     await session.delete(item)
                 await session.commit()
     except exc.SQLAlchemyError as error:
-        print('error', error)
+        await bot_send_error_message(
+            f'clear_all_cartitems_of_user:\nuser_id={user_id}\nError: {error.__str__()}')
 
 
 async def delete_item_from_cart(user_id, product_id) -> bool:
@@ -195,7 +195,8 @@ async def delete_item_from_cart(user_id, product_id) -> bool:
                 return True
             return False
     except exc.SQLAlchemyError as error:
-        print('error', error)
+        await bot_send_error_message(
+            f'delete_item_from_cart:\nuser_id={user_id}\nproduct_id={product_id}\nError: {error.__str__()}')
         return False
 
 
@@ -209,7 +210,8 @@ async def get_all_answered_questions() -> list[QuestionAnswer]:
             )
             return qas.scalars().all()
     except exc.SQLAlchemyError as error:
-        print('error', error)
+        await bot_send_error_message(
+            f'get_all_answered_questions:\nError: {error.__str__()}')
         return []
 
 
@@ -221,7 +223,6 @@ async def create_new_question(text) -> bool:
             await session.commit()
         return True
     except exc.SQLAlchemyError as error:
-        print('error', error)
-        # await bot_send_error_message(
-        #     f'create_user:\nuser_id={user_id}\nusername={username}\nError: {error.__str__()}')
+        await bot_send_error_message(
+            f'create_new_question:\ntext={text}\nError: {error.__str__()}')
     return False

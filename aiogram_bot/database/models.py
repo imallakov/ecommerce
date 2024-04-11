@@ -60,7 +60,7 @@ class Chat(Base):
 
 class User(Base):
     __tablename__ = "users"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, unique=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, unique=True)
     username: Mapped[str] = mapped_column(String(32))
     cart_items: Mapped["CartItem"] = relationship(backref="user", uselist=True)
 

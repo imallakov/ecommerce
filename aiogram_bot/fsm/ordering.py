@@ -1,8 +1,11 @@
+from tkinter import PhotoImage
 from aiogram import Router, F
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, pre_checkout_query, LabeledPrice
+from config_reader import config
+from bot import answer_to_pre_checkout_query
 
 from database.requests import get_user, get_all_cartitems_of_user
 from keyboards.callbackdata import CartItemData
@@ -11,6 +14,7 @@ from utils.save_to_excel import save_order_to_excel_file
 
 order_fsm_router = Router()
 
+payment_token = config.payment_token.get_secret_value()
 
 class FSMorder(StatesGroup):
     # Создаем экземпляры класса State, последовательно
@@ -18,6 +22,7 @@ class FSMorder(StatesGroup):
     # бот в разные моменты взаимодействия с пользователем
     enter_address = State()
     enter_contact = State()
+    payment = State()
 
 
 @order_fsm_router.callback_query(CartItemData.filter(F.event == 'order'))
@@ -29,10 +34,14 @@ async def ask_address(query: CallbackQuery, state: FSMContext):
             show_alert=True,
         )
     else:
+        money = 0
+        for item in cartitems:
+            money += item.product.price * item.quantity
         await state.set_state(FSMorder.enter_address)
         sent_message = await query.message.edit_text(text='Укажите пожалуйста адрес доставки:',
                                                      reply_markup=await order_keyboard(text='Отменить доставку'))
         await state.update_data(message_id=sent_message.message_id)
+        await state.update_data(money=money)
 
 
 @order_fsm_router.message(StateFilter(FSMorder.enter_address))
@@ -50,17 +59,64 @@ async def address_is_entered(message: Message, state: FSMContext):
 
 
 @order_fsm_router.message(StateFilter(FSMorder.enter_contact))
-async def address_is_entered(message: Message, state: FSMContext):
+async def contact_is_entered(message: Message, state: FSMContext):
     await state.update_data(number=message.text)
     await message.delete()
     data = await state.get_data()
+    money = data['money']
     message_id = data['message_id']
-    await message.bot.edit_message_text(chat_id=message.chat.id,
-                                        message_id=message_id,
-                                        text='Спасибо!✅\nУже оформляем вашу заявку!',
-                                        reply_markup=await order_keyboard(text='Хорошо👍🏻'))
-    user = await get_user(user_id=message.chat.id)
-    items = await get_all_cartitems_of_user(user_id=user.id)
-    await save_order_to_excel_file(user_id=user.id, username=user.username, phone_number=message.text, items=items,
-                                   address=data['address'])
-    await state.clear()
+    phone = message.text
+    address = data['address']
+    await message.bot.edit_message_text(chat_id=message.chat.id, message_id=message_id,
+                                        text=f'Произведите пожалуйста оплату за товары снизу⬇️')
+    await message.answer(text='payment_token: '+payment_token)
+    sent_invoice = await message.bot.send_invoice(
+        chat_id=message.chat.id,
+        title='Доставка товаров в корзине',
+        description=f'Оплата заказываемых товаров',
+        payload=f'user:{message.chat.id}|{phone}|{address}|{message_id}',
+        provider_token=payment_token,
+        currency='RUB',
+        prices=[
+            LabeledPrice(
+                label='Суммарная стоимость товаров',
+                amount=100 * money
+            ),
+        ],
+        start_parameter='djangoshopbot',
+        provider_data=None,
+        protect_content=True,
+    )
+    await state.update_data(sent_invoice=sent_invoice.message_id)
+    await state.set_state(FSMorder.payment)
+
+
+@order_fsm_router.pre_checkout_query()
+async def pre_checkout_query_answer(pcq: pre_checkout_query):
+    await answer_to_pre_checkout_query(pcq.id, answer=True, error='')
+        
+
+@order_fsm_router.message(F.successful_payment)
+async def successfull_payment(message: Message):
+    await message.answer(text='successfull payment')
+    _, info = message.successful_payment.invoice_payload.split(':')
+    user_id, phone, address, message_id = info.split('|')
+    await message.bot.delete_message(chat_id=message.chat.id, message_id=message_id)
+    error: bool = False
+    user = await get_user(user_id=user_id)
+    if user is not None:
+        items = await get_all_cartitems_of_user(user_id=user.id)
+        if len(items)>0:
+            await save_order_to_excel_file(user_id=user.id, username=user.username, phone_number=phone, items=items,
+                                        address=address)
+        else:
+            error=True
+    else:
+        error=True
+    if not error:
+        await message.answer(text='Спасибо!✅\nУже оформляем вашу заявку!',
+                             reply_markup=await order_keyboard(text='Хорошо👍🏻'))
+    else:
+        await message.answer(text=('Произошла ошибка!\nПопробуйте перезапустить бота и заново заказать доставку'
+                                   '\nЕсли ошибка повторится дайте нам знать пожалуйста в разделе FAQ'),
+                             reply_markup=await order_keyboard(text='Хорошо'))

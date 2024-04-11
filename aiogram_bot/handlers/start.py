@@ -14,15 +14,25 @@ start_command_router = Router()
 async def cmd_start(message: types.Message, state: FSMContext | None):
     if state is not None:
         if not await state.get_state() is None:
+            data = await state.get_data()
+            if 'sent_invoice' in data:
+                sent_invoice = data['sent_invoice']
+                await message.bot.delete_message(chat_id=message.chat.id, message_id=sent_invoice)
+            if 'message_id' in data:
+                message_id = data['message_id']
+                await message.bot.delete_message(chat_id=message.chat.id, message_id=message_id)
             await state.update_data({})
             await state.clear()
-    await create_user(user_id=message.chat.id, username=message.chat.username)
-    chats = await check_subscription(bot=message.bot, user_id=message.chat.id)
-    if len(chats) == 0:
-        await message.answer(text="Добро пожаловать!", reply_markup=await main_menu())
+    user = await create_user(user_id=message.chat.id, username=message.chat.username)
+    if user is not None:
+        chats = await check_subscription(bot=message.bot, user_id=message.chat.id)
+        if len(chats) == 0:
+            await message.answer(text="Добро пожаловать!", reply_markup=await main_menu())
+        else:
+            await message.answer(text='Для того чтоб пользоваться ботом подпишитесь пожалуйста на наши каналы и чаты',
+                                reply_markup=await subscription_keyboard(chats))
     else:
-        await message.answer(text='Для того чтоб пользоваться ботом подпишитесь пожалуйста на наши каналы и чаты',
-                             reply_markup=await subscription_keyboard(chats))
+        await message.answer(text='error! Try again later please!')
 
 
 @start_command_router.callback_query(F.data == 'main_menu')
