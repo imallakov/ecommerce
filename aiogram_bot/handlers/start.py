@@ -27,6 +27,7 @@ async def cmd_start(message: types.Message, state: FSMContext | None):
 
 @start_command_router.callback_query(F.data == 'main_menu')
 async def main_menu_funciton(query: CallbackQuery, state: FSMContext | None):
+    await query.answer()
     if state is not None:
         if not await state.get_state() is None:
             await state.update_data({})
@@ -43,6 +44,7 @@ async def ignore_function(query: CallbackQuery):
 async def checking_subscription(query: CallbackQuery):
     chats = await check_subscription(bot=query.message.bot, user_id=query.message.chat.id)
     if len(chats) == 0:
+        await query.answer()
         await query.message.edit_text(text="Спасибо что подписались!✅\nДобро пожаловать!",
                                       reply_markup=await main_menu())
     else:
