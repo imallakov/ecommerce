@@ -1,0 +1,32 @@
+version: "3.10"
+
+services:
+  web:
+    build: ./django_app
+    volumes:
+      - ./photos:/app/photos
+      - ./.env:/app/.env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  bot:
+    build: ./aiogram_bot
+    volumes:
+      - ./photos:/app/photos
+      - ./.env:/app/.env
+    depends_on:
+      - db
+
+  db:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: django
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
