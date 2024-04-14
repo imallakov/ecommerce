@@ -79,7 +79,7 @@ async def contact_is_entered(message: Message, state: FSMContext):
         prices=[
             LabeledPrice(
                 label='Суммарная стоимость товаров',
-                amount=100 * 100, # in release version replase one of the "100" with "money" variable
+                amount=money * 100, # in release version replase one of the "100" with "money" variable
             ),
         ],
         start_parameter='djangoshopbot',
