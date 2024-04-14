@@ -8,6 +8,6 @@ RUN chmod 755 .
 COPY . .
 
 EXPOSE 8000
-COPY entrypoint.sh /app/
-RUN chmod +x /app/entrypoint.sh
-CMD ["/app/entrypoint.sh"]
+COPY django_run.sh /app/
+RUN chmod +x /app/django_run.sh
+CMD ["/app/django_run.sh"]
