@@ -163,7 +163,7 @@ async def get_all_cartitems_of_user(user_id) -> list[CartItem]:
         return []
 
 
-async def clear_all_cartitems_of_user(user_id):
+async def clear_all_cartitems_of_user(user_id) -> bool:
     try:
         async with async_session() as session:
             cart_items = await session.execute(
@@ -175,9 +175,13 @@ async def clear_all_cartitems_of_user(user_id):
                 for item in cart_items:
                     await session.delete(item)
                 await session.commit()
+                return True
+            else:
+                return False
     except exc.SQLAlchemyError as error:
         await bot_send_error_message(
             f'clear_all_cartitems_of_user:\nuser_id={user_id}\nError: {error.__str__()}')
+        return False
 
 
 async def delete_item_from_cart(user_id, product_id) -> bool:
