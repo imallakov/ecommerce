@@ -73,13 +73,13 @@ async def contact_is_entered(message: Message, state: FSMContext):
         chat_id=message.chat.id,
         title='Доставка товаров в корзине',
         description=f'Оплата заказываемых товаров',
-        payload=f'user:{message.chat.id}|{phone}|{address}|{message_id}',
+        payload=f'user:{message.chat.id}',
         provider_token=payment_token,
         currency='RUB',
         prices=[
             LabeledPrice(
                 label='Суммарная стоимость товаров',
-                amount=100 * money
+                amount=100 * 100, # in release version replase one of the "100" with "money" variable
             ),
         ],
         start_parameter='djangoshopbot',
@@ -87,6 +87,8 @@ async def contact_is_entered(message: Message, state: FSMContext):
         protect_content=True,
     )
     await state.update_data(sent_invoice=sent_invoice.message_id)
+    await state.update_data(phone=phone)
+    await state.update_data(address=address)
     await state.set_state(FSMorder.payment)
 
 
@@ -96,18 +98,22 @@ async def pre_checkout_query_answer(pcq: pre_checkout_query):
         
 
 @order_fsm_router.message(F.successful_payment)
-async def successfull_payment(message: Message):
-    await message.answer(text='successfull payment')
-    _, info = message.successful_payment.invoice_payload.split(':')
-    user_id, phone, address, message_id = info.split('|')
+async def successfull_payment(message: Message, state: FSMContext):
+    data = await state.get_data()
+    user_id = message.chat.id
+    phone = data['phone']
+    address = data['address']
+    message_id = data['message_id']
     await message.bot.delete_message(chat_id=message.chat.id, message_id=message_id)
     error: bool = False
     user = await get_user(user_id=user_id)
     if user is not None:
         items = await get_all_cartitems_of_user(user_id=user.id)
         if len(items)>0:
-            await save_order_to_excel_file(user_id=user.id, username=user.username, phone_number=phone, items=items,
+            result = await save_order_to_excel_file(user_id=user.id, username=user.username, phone_number=phone, items=items,
                                         address=address)
+            if not result:
+                error = True
         else:
             error=True
     else:
@@ -119,3 +125,5 @@ async def successfull_payment(message: Message):
         await message.answer(text=('Произошла ошибка!\nПопробуйте перезапустить бота и заново заказать доставку'
                                    '\nЕсли ошибка повторится дайте нам знать пожалуйста в разделе FAQ'),
                              reply_markup=await order_keyboard(text='Хорошо'))
+    await state.update_data({})
+    await state.clear()
