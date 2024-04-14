@@ -6,7 +6,7 @@ from openpyxl.styles import Font
 from openpyxl.workbook import Workbook
 from datetime import datetime
 
-from aiogram_bot.bot import bot_send_error_message
+from bot import bot_send_error_message
 from database.models import CartItem
 from database.requests import clear_all_cartitems_of_user
 
