@@ -49,7 +49,7 @@ async def list_of_users_items(query: CallbackQuery, callback_data: CartItemData)
         quantity = cartitems[index].quantity
         await query.bot.send_photo(
             chat_id=query.message.chat.id,
-            photo=FSInputFile(path='photos/'+product.photo),
+            photo=FSInputFile(path='photos/' + product.photo.url),
             caption=f'{product.name}\n\nPrice: {product.price}\n'
                     f'Quantity: {quantity}'
                     f'\n\nDescription:\n{product.description}',
@@ -91,7 +91,7 @@ async def sure_delete_item_from_cart(query: CallbackQuery, callback_data: CartIt
             quantity = cartitems[index].quantity
             await query.bot.send_photo(
                 chat_id=query.message.chat.id,
-                photo=FSInputFile(path=product.photo),
+                photo=FSInputFile(path='photos/' + product.photo.url),
                 caption=f'{product.name}\n\nPrice: {product.price}\n'
                         f'Quantity: {quantity}'
                         f'\n\nDescription:\n{product.description}',

@@ -46,7 +46,7 @@ async def checking_subscription(query: CallbackQuery, callback_data: ProductData
     if len(products) > 0:
         product = products[callback_data.index - 1]
         await query.message.delete()
-        await query.bot.send_photo(chat_id=query.message.chat.id, photo=FSInputFile(path='photos/'+product.photo),
+        await query.bot.send_photo(chat_id=query.message.chat.id, photo=FSInputFile(path='photos/' + product.photo.url),
                                    caption=f'{product.name}\n\nPrice: {product.price}'
                                            f'\n\nDescription:\n{product.description}',
                                    reply_markup=await product_keyboard(cat_id=product.subcategory.category_id,
