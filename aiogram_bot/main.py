@@ -67,7 +67,7 @@ async def subscribe_to_channel(channel_name):
 
 async def main():
     try:
-        logging.basicConfig(level=logging.INFO)  # filename='/app/logs/bot.log',
+        logging.basicConfig(filename='/app/logs/bot.log', level=logging.INFO)
         await bot.set_my_commands([BotCommand(command='start', description='(пере)запустить бота')],
                                   BotCommandScopeDefault())
         await bot(DeleteWebhook(drop_pending_updates=True))
