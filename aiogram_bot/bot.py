@@ -26,12 +26,15 @@ async def bot_send_photo(user_id, photo_url, message):
     try:
         await bot.send_photo(
             chat_id=user_id,
-            photo=FSInputFile(path='photos/' + photo_url),
+            photo=FSInputFile(path=f'photos/{photo_url}'),
             caption=message,
         )
     except TelegramRetryAfter as e:
         await asyncio.sleep(e.retry_after)
         await bot_send_photo(user_id=user_id, photo_url=photo_url, message=message)
+    except FileNotFoundError as error:
+        await bot_send_error_message(
+            f'bot_send_photo:\nuser_id={user_id}\nphoto_url={photo_url}\nmessage={message}\nError: {error}')
     except Exception as e:
         pass
 
@@ -45,6 +48,9 @@ async def bot_send_message(user_id, message):
     except TelegramRetryAfter as e:
         await asyncio.sleep(e.retry_after)
         await bot_send_message(user_id=user_id, message=message)
+    except FileNotFoundError as error:
+        await bot_send_error_message(
+            f'bot_send_message:\nuser_id={user_id}\nmessage={message}\nError: {error}')
     except Exception as e:
         pass
 
@@ -53,9 +59,8 @@ async def bot_send_mailings(mailing_id):
     from database.requests import get_mailing_by_id, get_all_users
     mail = await get_mailing_by_id(mailing_id=mailing_id)
     users = await get_all_users()
-
     for user in users:
-        if mail.photo and mail.photo.file:  # Check if photo attribute has a file associated with it
+        if mail.photo:
             await bot_send_photo(user_id=user.id, photo_url=mail.photo.url, message=mail.message)
         else:
             await bot_send_message(user_id=user.id, message=mail.message)

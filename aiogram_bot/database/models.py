@@ -88,7 +88,7 @@ class QuestionAnswer(models.Model):
 
 
 class Mailing(models.Model):
-    photo = models.ImageField(upload_to='mailings/', null=True, blank=True)
+    photo = models.ImageField(upload_to='mailings/', null=True, blank=True, default=None)
     message = models.TextField()
 
     def __str__(self):
