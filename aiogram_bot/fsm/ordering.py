@@ -16,6 +16,7 @@ order_fsm_router = Router()
 
 payment_token = config.payment_token.get_secret_value()
 
+
 class FSMorder(StatesGroup):
     # Создаем экземпляры класса State, последовательно
     # перечисляя возможные состояния, в которых будет находиться
@@ -79,7 +80,8 @@ async def contact_is_entered(message: Message, state: FSMContext):
         prices=[
             LabeledPrice(
                 label='Суммарная стоимость товаров',
-                amount=money * 100, # in release version replase one of the "100" with "money" variable
+                amount=money * 100,
+                # in release version if amount=100*100 replace one of the "100" with "money" variable
             ),
         ],
         start_parameter='djangoshopbot',
@@ -95,7 +97,7 @@ async def contact_is_entered(message: Message, state: FSMContext):
 @order_fsm_router.pre_checkout_query()
 async def pre_checkout_query_answer(pcq: pre_checkout_query):
     await answer_to_pre_checkout_query(pcq.id, answer=True, error='')
-        
+
 
 @order_fsm_router.message(F.successful_payment)
 async def successfull_payment(message: Message, state: FSMContext):
@@ -109,15 +111,16 @@ async def successfull_payment(message: Message, state: FSMContext):
     user = await get_user(user_id=user_id)
     if user is not None:
         items = await get_all_cartitems_of_user(user_id=user.id)
-        if len(items)>0:
-            result = await save_order_to_excel_file(user_id=user.id, username=user.username, phone_number=phone, items=items,
-                                        address=address)
+        if len(items) > 0:
+            result = await save_order_to_excel_file(user_id=user.id, username=user.username, phone_number=phone,
+                                                    items=items,
+                                                    address=address)
             if not result:
                 error = True
         else:
-            error=True
+            error = True
     else:
-        error=True
+        error = True
     if not error:
         await message.answer(text='Спасибо!✅\nУже оформляем вашу заявку!',
                              reply_markup=await order_keyboard(text='Хорошо👍🏻'))
