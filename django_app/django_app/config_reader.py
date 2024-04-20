@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     postgres_port: SecretStr
     payment_token: SecretStr
     errors_chat_id: SecretStr
+    redis_host: SecretStr
+    redis_port: SecretStr
 
 
 # При импорте файла сразу создастся

@@ -1,7 +1,7 @@
 from asgiref.sync import sync_to_async
 from django.core.exceptions import ObjectDoesNotExist  # Import ObjectDoesNotExist
 from bot import bot_send_error_message
-from .models import User, Chat, Product, Category, Subcategory, CartItem, QuestionAnswer
+from .models import User, Chat, Product, Category, Subcategory, CartItem, QuestionAnswer, Mailing
 
 
 async def is_user_exists(user_id: int) -> bool:
@@ -34,6 +34,16 @@ async def get_user(user_id: int) -> User | None:
         return None
     except Exception as error:
         await bot_send_error_message(f'get_user:\nuser_id={user_id}\nError: {error}')
+
+
+async def get_all_users() -> list[User]:
+    try:
+        users = await sync_to_async(list)(
+            User.objects.all().order_by('id'))  # Execute synchronously and convert to list
+        return users
+    except Exception as error:
+        await bot_send_error_message(f'get_all_users:\nError: {error}')
+        return []
 
 
 async def get_user_subscription_status(user_id) -> bool:
@@ -168,3 +178,12 @@ async def create_new_question(text) -> bool:
     except Exception as error:
         await bot_send_error_message(f'create_new_question:\ntext={text}\nError: {error}')
         return False  # Return False on error
+
+
+async def get_mailing_by_id(mailing_id) -> Mailing | None:
+    try:
+        return await Mailing.objects.aget(id=mailing_id)
+    except Mailing.DoesNotExist:
+        return None
+    except Exception as error:
+        await bot_send_error_message(f'get_mailing_by_id:\nmailing_id={mailing_id}\nError: {error}')
