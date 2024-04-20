@@ -11,6 +11,7 @@ services:
       - "8000:8000"
     depends_on:
       - db
+      - redis
 
   bot:
     build: ./aiogram_bot
@@ -20,6 +21,7 @@ services:
       - ./logs:/app/logs
     depends_on:
       - db
+      - redis
 
   db:
     image: postgres:latest
@@ -29,6 +31,11 @@ services:
       POSTGRES_DB: django
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
 
 volumes:
   postgres_data:
