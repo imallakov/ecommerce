@@ -7,7 +7,7 @@ import aioredis
 import async_timeout
 
 from middlewares.subscription import SubscriptionCallbackMiddleware
-from bot import bot, bot_send_error_message, bot_send_mailings
+from bot import bot, bot_send_mailings
 from fsm.faq import faq_fsm_router
 from fsm.ordering import order_fsm_router
 from fsm.product_quantity import shopping_fsm_router
@@ -36,10 +36,7 @@ async def subscribe_to_channel(channel_name):
     )
     psub = redis.pubsub()
 
-    await bot_send_error_message('created a redis connection')
-
     async def reader(channel: aioredis.client.PubSub):
-        await bot_send_error_message('reader function')
         while True:
             try:
                 async with async_timeout.timeout(5):  # Increase timeout value
@@ -58,7 +55,6 @@ async def subscribe_to_channel(channel_name):
     try:
         async with psub as p:
             await p.subscribe(channel_name)
-            await bot_send_error_message(f'subscribed to channel {channel_name}')
             await reader(p)  # wait for reader to complete
     finally:
         await psub.close()  # Close pubsub connection
