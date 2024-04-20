@@ -1,232 +1,170 @@
-from types import NoneType
-
-from sqlalchemy import select, exc
-from sqlalchemy.orm import selectinload
+from asgiref.sync import sync_to_async
+from django.core.exceptions import ObjectDoesNotExist  # Import ObjectDoesNotExist
 from bot import bot_send_error_message
-
-from .models import User, Chat, async_session, Product, Category, Subcategory, CartItem, QuestionAnswer
+from .models import User, Chat, Product, Category, Subcategory, CartItem, QuestionAnswer
 
 
 async def is_user_exists(user_id: int) -> bool:
     try:
-        async with async_session() as session:
-            sql_res = await session.execute(select(User).where(User.id == user_id))
-            res = sql_res.scalars().first()
-            if type(res) is not NoneType:
-                return True
-            else:
-                return False
-    except exc.SQLAlchemyError as error:
-        await bot_send_error_message(
-            f'is_user_exists:\nuser_id={user_id}\nError: {error.__str__()}')
+        await User.objects.get(id=user_id)  # Use get for async fetching
+        return True
+    except User.DoesNotExist:
         return False
+    except Exception as error:
+        await bot_send_error_message(f'is_user_exists:\nuser_id={user_id}\nError: {error}')
 
 
 async def create_user(user_id: int, username: str | None) -> User | None:
     try:
-        if type(username) is None:
-            username = ''
-        if not await is_user_exists(user_id):
-            async with async_session() as session:
-                user = User(id=user_id, username=username)
-                session.add(user)
-                await session.commit()
-                return await get_user(user_id)
-        else:
-            async with async_session() as session:
-                result = await session.execute(
-                    select(User)
-                    .filter(User.id == user_id)  # type: ignore
-                )
-                user = result.scalars().first()
-                user.username = username
-                await session.commit()
-                return await get_user(user_id)
-    except exc.SQLAlchemyError as error:
-        await bot_send_error_message(
-            f'create_user:\nuser_id={user_id}\nusername={username}\nError: {error.__str__()}')
-        return None
+        user, created = await sync_to_async(User.objects.get_or_create)(id=user_id, defaults={
+            "username": username})  # Use get_or_create
+        return user
+    except Exception as error:
+        await bot_send_error_message(f'create_user:\nuser_id={user_id}\nusername={username}\nError: {error}')
+        return None  # Return None on error
 
 
 async def get_user(user_id: int) -> User | None:
     try:
-        async with async_session() as session:
-            result = await session.execute(
-                select(User)
-                .options(selectinload(User.cart_items))
-                .filter(User.id == user_id)  # type: ignore
-            )
-            return result.scalars().first()
-    except exc.SQLAlchemyError as error:
-        await bot_send_error_message(
-            f'get_user:\nuser_id={user_id}\nError: {error.__str__()}')
+        user = await User.objects.prefetch_related(  # Use prefetch_related
+            'cart_items__product'
+        ).aget(id=user_id)
+        return user
+    except User.DoesNotExist:
         return None
+    except Exception as error:
+        await bot_send_error_message(f'get_user:\nuser_id={user_id}\nError: {error}')
+
+
+async def get_user_subscription_status(user_id) -> bool:
+    try:
+        user = await sync_to_async(User.objects.get)(id=user_id)  # Use sync_to_async to execute synchronously
+        return user.is_subscription_complete
+    except User.DoesNotExist:
+        return False
+    except Exception as error:
+        await bot_send_error_message(f'get_user_subscription_status:\nuser_id={user_id}\nError: {error}')
+        return False
+
+
+async def change_user_subscription_status(user_id, status: bool) -> bool:
+    try:
+        user = await sync_to_async(User.objects.get)(id=user_id)
+        user.is_subscription_complete = status
+        await sync_to_async(user.save)()  # Save the user synchronously
+        return True
+    except Exception as error:
+        await bot_send_error_message(
+            f'change_user_subscription_status:\nuser_id={user_id}\nstatus={status}\nError: {error}')
+        return False
 
 
 async def add_product_to_cart(user_id: int, product_id: int, quantity: int) -> bool:
     try:
-        async with async_session() as session:
-            result = await session.execute(
-                select(CartItem)
-                .filter(CartItem.product_id == product_id, CartItem.user_id == user_id)  # type: ignore
-            )
-            cartitem = result.scalars().first()
-            if cartitem is None:
-                cartitem = CartItem(product_id=product_id, quantity=quantity, user_id=user_id)
-            else:
-                cartitem.quantity += quantity
-            session.add(cartitem)
-            await session.commit()
+        cartitem, created = await CartItem.objects.aget_or_create(
+            user_id=user_id, product_id=product_id,
+            defaults={"quantity": quantity}
+        )
+        if not created:
+            cartitem.quantity += quantity
+            await cartitem.asave()
         return True
-    except exc.SQLAlchemyError as error:
+    except Exception as error:
         await bot_send_error_message(
-            f'add_product_to_cart:\nuser_id={user_id}\nproduct_id={product_id}\nError: {error.__str__()}')
-        return False
+            f'add_product_to_cart:\nuser_id={user_id}\nproduct_id={product_id}\nError: {error}')
 
 
 async def get_all_subscription_chats() -> list[Chat]:
     try:
-        async with async_session() as session:
-            chats = await session.execute(select(Chat))
-            return chats.scalars().all()
-    except exc.SQLAlchemyError as error:
-        await bot_send_error_message(
-            f'get_all_subscription_chats:\nError: {error.__str__()}')
-        return []
+        chats = await sync_to_async(list)(
+            Chat.objects.all().order_by('id'))  # Execute synchronously and convert to list
+        return chats
+    except Exception as error:
+        await bot_send_error_message(f'get_all_subscription_chats:\nError: {error}')
+        return []  # Return an empty list on error
 
+
+# ... (previous functions)
 
 async def get_all_categories() -> list[Category]:
     try:
-        async with async_session() as session:
-            caregories = await session.execute(select(Category).order_by(Category.id))
-            return caregories.scalars().all()
-    except exc.SQLAlchemyError as error:
-        await bot_send_error_message(
-            f'get_all_categories:\nError: {error.__str__()}')
+        categories = await sync_to_async(list)(
+            Category.objects.all().order_by('id'))  # Execute synchronously and convert to list
+        return categories
+    except Exception as error:
+        await bot_send_error_message(f'get_all_categories:\nError: {error}')
         return []
 
 
 async def get_subcategories_of_category(category_id) -> list[Subcategory]:
     try:
-        async with async_session() as session:
-            subcaregories = await session.execute(
-                select(Subcategory).where(Subcategory.category_id == category_id).order_by(Subcategory.id))
-            return subcaregories.scalars().all()
-    except exc.SQLAlchemyError as error:
-        await bot_send_error_message(
-            f'get_subcategories_of_category:\ncategory_id={category_id}\nError: {error.__str__()}')
+        return await sync_to_async(list)(Subcategory.objects.filter(category_id=category_id).order_by('id'))
+    except Exception as error:
+        await bot_send_error_message(f'get_subcategories_of_category:\ncategory_id={category_id}\nError: {error}')
         return []
 
 
 async def get_products_of_subcategory(subcategory_id) -> list[Product]:
     try:
-        async with async_session() as session:
-            products = await session.execute(
-                select(Product)
-                .where(Product.subcategory_id == subcategory_id)
-                .order_by(Product.id)
-                .options(selectinload(Product.subcategory))
-            )
-            return products.scalars().all()
-    except exc.SQLAlchemyError as error:
-        await bot_send_error_message(
-            f'get_products_of_subcategory:\nsubcategory_id={subcategory_id}\nError: {error.__str__()}')
+        return await sync_to_async(list)(
+            Product.objects.select_related('subcategory').filter(subcategory_id=subcategory_id).order_by('id'))
+    except Exception as error:
+        await bot_send_error_message(f'get_products_of_subcategory:\nsubcategory_id={subcategory_id}\nError: {error}')
         return []
 
 
 async def get_product_by_id(product_id) -> Product | None:
     try:
-        async with async_session() as session:
-            product = await session.execute(
-                select(Product)
-                .where(Product.id == product_id)
-            )
-            return product.scalars().first()
-    except exc.SQLAlchemyError as error:
-        await bot_send_error_message(
-            f'get_product_by_id:\nproduct_id={product_id}\nError: {error.__str__()}')
+        return await Product.objects.aget(id=product_id)
+    except Product.DoesNotExist:
         return None
+    except Exception as error:
+        await bot_send_error_message(f'get_product_by_id:\nproduct_id={product_id}\nError: {error}')
 
 
 async def get_all_cartitems_of_user(user_id) -> list[CartItem]:
     try:
-        async with async_session() as session:
-            cartitems = await session.execute(
-                select(CartItem)
-                .where(CartItem.user_id == user_id)
-                .options(selectinload(CartItem.product))
-            )
-            return cartitems.scalars().all()
-    except exc.SQLAlchemyError as error:
-        await bot_send_error_message(
-            f'get_all_cartitems_of_user:\nuser_id={user_id}\nError: {error.__str__()}')
+        cart_items = await sync_to_async(list)(
+            CartItem.objects.select_related('product').filter(user_id=user_id).order_by(
+                'id'))  # Execute synchronously and convert to list
+        return cart_items
+    except Exception as error:
+        await bot_send_error_message(f'get_all_cartitems_of_user:\nuser_id={user_id}\nError: {error}')
         return []
 
 
 async def clear_all_cartitems_of_user(user_id) -> bool:
     try:
-        async with async_session() as session:
-            cart_items = await session.execute(
-                select(CartItem)
-                .where(CartItem.user_id == user_id)
-            )
-            cart_items = cart_items.scalars().all()
-            if cart_items:
-                for item in cart_items:
-                    await session.delete(item)
-                await session.commit()
-                return True
-            else:
-                return False
-    except exc.SQLAlchemyError as error:
-        await bot_send_error_message(
-            f'clear_all_cartitems_of_user:\nuser_id={user_id}\nError: {error.__str__()}')
-        return False
+        await CartItem.objects.filter(user_id=user_id).adelete()
+        return True
+    except Exception as error:
+        await bot_send_error_message(f'clear_all_cartitems_of_user:\nuser_id={user_id}\nError: {error}')
 
 
 async def delete_item_from_cart(user_id, product_id) -> bool:
     try:
-        async with async_session() as session:
-            cart_item = await session.execute(
-                select(CartItem)
-                .where(CartItem.user_id == user_id, CartItem.product_id == product_id)
-                .limit(1)
-            )
-            cart_item = cart_item.scalars().first()
-            if cart_item:
-                await session.delete(cart_item)
-                await session.commit()
-                return True
-            return False
-    except exc.SQLAlchemyError as error:
+        await CartItem.objects.filter(user_id=user_id, product_id=product_id).adelete()
+        return True
+    except Exception as error:
         await bot_send_error_message(
-            f'delete_item_from_cart:\nuser_id={user_id}\nproduct_id={product_id}\nError: {error.__str__()}')
-        return False
+            f'delete_item_from_cart:\nuser_id={user_id}\nproduct_id={product_id}\nError: {error}')
 
 
 async def get_all_answered_questions() -> list[QuestionAnswer]:
     try:
-        async with async_session() as session:
-            qas = await session.execute(
-                select(QuestionAnswer)
-                .where(QuestionAnswer.answer.isnot(None))
-                .order_by(QuestionAnswer.id)
-            )
-            return qas.scalars().all()
-    except exc.SQLAlchemyError as error:
-        await bot_send_error_message(
-            f'get_all_answered_questions:\nError: {error.__str__()}')
+        answered_questions = await sync_to_async(list)(QuestionAnswer.objects.filter(answer__isnull=False).order_by(
+            'id'))  # Execute synchronously and convert to list
+        return answered_questions
+    except Exception as error:
+        await bot_send_error_message(f'get_all_answered_questions:\nError: {error}')
         return []
 
 
 async def create_new_question(text) -> bool:
     try:
-        async with async_session() as session:
-            ques = QuestionAnswer(question=text, answer=None)
-            session.add(ques)
-            await session.commit()
+        await sync_to_async(QuestionAnswer.objects.create)(question=text,
+                                                           answer=None)  # Use sync_to_async for creating objects
         return True
-    except exc.SQLAlchemyError as error:
-        await bot_send_error_message(
-            f'create_new_question:\ntext={text}\nError: {error.__str__()}')
-    return False
+    except Exception as error:
+        await bot_send_error_message(f'create_new_question:\ntext={text}\nError: {error}')
+        return False  # Return False on error
