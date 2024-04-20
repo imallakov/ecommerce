@@ -24,7 +24,7 @@ class Subcategory(models.Model):
 
 class Product(models.Model):
     name = models.CharField(max_length=128)
-    photo = models.ImageField(upload_to='./products')
+    photo = models.ImageField(upload_to='products/')
     description = models.TextField()
     price = models.PositiveIntegerField(default=1)
     subcategory = models.ForeignKey(Subcategory, on_delete=models.CASCADE)
@@ -49,8 +49,9 @@ class Chat(models.Model):
 
 
 class User(models.Model):
-    id = models.BigIntegerField(unique=True, primary_key=True)
+    id = models.IntegerField(unique=True, primary_key=True)
     username = models.CharField(max_length=32)
+    is_subscription_complete = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.id} ({self.username})"
@@ -71,7 +72,7 @@ class CartItem(models.Model):
         db_table = "cart_items"
 
 
-class questionanswer(models.Model):
+class QuestionAnswer(models.Model):
     question = models.TextField()
     answer = models.TextField(null=True)
 
@@ -80,3 +81,15 @@ class questionanswer(models.Model):
 
     class Meta:
         db_table = "question_answers"
+        verbose_name = "FAQ"
+
+
+class Mailing(models.Model):
+    photo = models.ImageField(upload_to='mailings/', null=True)
+    message = models.TextField()
+
+    def __str__(self):
+        return f'Message: {self.message}'
+
+    class Meta:
+        db_table = "mailings"
