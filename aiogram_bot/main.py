@@ -4,8 +4,8 @@ from aiogram.types import BotCommand, BotCommandScopeDefault
 import asyncio
 import logging
 
+from middlewares.subscription import SubscriptionCallbackMiddleware
 from bot import bot
-from config_reader import config
 from fsm.faq import faq_fsm_router
 from fsm.ordering import order_fsm_router
 from fsm.product_quantity import shopping_fsm_router
@@ -21,11 +21,11 @@ dp.include_router(shopping_fsm_router)
 dp.include_router(cart_router)
 dp.include_router(order_fsm_router)
 dp.include_router(faq_fsm_router)
+dp.callback_query.outer_middleware(SubscriptionCallbackMiddleware())
 
 
 async def main():
     logging.basicConfig(filename='/app/logs/bot.log', level=logging.INFO)  # Настройка уровня логирования на INFO
-
     try:
         await bot.set_my_commands([BotCommand(command='start', description='(пере)запустить бота')],
                                   BotCommandScopeDefault())

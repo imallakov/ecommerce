@@ -1,13 +1,12 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-
-from database.models import Chat
-from database.requests import get_all_categories, get_subcategories_of_category
+from database.requests import get_all_categories, get_subcategories_of_category, get_all_subscription_chats
 from keyboards.callbackdata import CategoryData, SubCatData, ProductData, CartItemData, FAQData
 
 
-async def subscription_keyboard(chats: list[Chat]) -> InlineKeyboardMarkup:
+async def subscription_keyboard() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
+    chats = await get_all_subscription_chats()
     for chat in chats:
         kb.add(
             InlineKeyboardButton(
